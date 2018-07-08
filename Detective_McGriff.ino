@@ -1,3 +1,4 @@
+/* Allow communication via serial */
 #include <SPI.h>
 
 /* McGriff's Hats */
@@ -17,22 +18,15 @@ Servo servo;
 #define echoPin         A1 // Help we need another PIN
 
 /* McGriffs paw */
-#define JOYSTICK_Y       A0
+#define JOYSTICK_Y      A0
 
 /* Default setting for the tail motor */
 int servoAngle;   // servo position in degrees
-int startAngle = 0;
-int endAngle = 100;
-int increment = 5;
+#define startAngle      0
+#define endAngle        100
 
 /* McGriff's State */
 uint8_t is_wagging = 0;
-long sees_object = 0;
-
-long feels_object = 0;
-
-/* Delaying */
-uint32_t delay_until = 0;
 
 /**
  * Setup McGriff's body parts.
@@ -60,17 +54,27 @@ void setup() {
   setup_joystick();
 }
 
+/**
+ * This is the main loop. It continously executes over and over.
+ * 
+ */
 void loop() {
   // Blink the Hat LED's randomly
 //  random_blink();
     
-  // Leave the answer displayed for 3 seconds
+  // Leave the answer displayed for 5 seconds
   delay_for(5000);
   delay_in_loop();
+
+  // Reset the hat LEDs
   hat_reset();
+
+  // Delay for 0.5 seconds
   delay_for(500);
   delay_in_loop();
 }
+
+/* ---------------------------- McGriff's Hat --------------------------------- */
 
 /**
  * Put on McGriff's hat.
@@ -128,7 +132,8 @@ void random_blink(void) {
 }
 
 
-/* McGriff's Voice Box */
+/* ------------------------- McGriff's Voice Box --------------------------------- */
+
 /**
  * Enable McGriff's voice box.
  */
@@ -150,9 +155,8 @@ void bark() {
  * McGriff makes a "rufff" Sound.
  */
 void arf() {
-  uint16_t i;
   playTone(890, 25);          // "a"    (short)
-  for(i = 890; i < 910; i += 2)    // "rrr"  (vary down)
+  for(int i = 890; i < 910; i += 2)    // "rrr"  (vary down)
      playTone(i, 5);
      
   playTone(4545, 80);         // intermediate
@@ -163,7 +167,6 @@ void arf() {
  * play tone on a piezo speaker.
  */
 void playTone(uint16_t tone1, uint16_t duration) {
-  if(tone1 < 50 || tone1 > 15000) return;  // these do not play on a piezo
   for (long i = 0; i < duration * 1000L; i += tone1 * 2) {
      digitalWrite(VOICE_BOX, HIGH);
      delayMicroseconds(tone1);
@@ -172,7 +175,9 @@ void playTone(uint16_t tone1, uint16_t duration) {
   }     
 }
 
-/* McGriff's Tail */
+
+/* ----------------------------- McGriff's Tail --------------------------------- */
+
 /**
  * Allows McGriff's tail to wag.
  */
@@ -186,7 +191,7 @@ void setup_tail() {
  */
 void wag_tail() {
   //if you change the delay value (from example change 50 to 10), the speed of the servo changes
-  increment = random(1, 10) * 5;
+  int increment = random(1, 10) * 5;
   
   for(servoAngle = startAngle; servoAngle < endAngle; servoAngle += increment)  //move the micro servo from 0 degrees to 180 degrees
   {
@@ -211,7 +216,8 @@ void multiple_tail_wag(int numberOfWags) {
 }
 
 
-/* Communicating with the computer */
+/* --------------------------- Communicating with the computer ---------------------------- */
+
 /**
  * Setup the serial communication with the computer
  */
@@ -220,20 +226,19 @@ void setup_serial() {
   Serial.println("Uryyb gurer zl ibvpr obk naq ung frrz gb or oebxra. Svk zl ung svefg fb v pna nafjre lbhe dhrfgvbaf.");
 }
 
-
 /**
  * Communicate with McGruff via the serial connection.
  */
 void communicate_via_serial() {
+  // Read all the messages from serial
   while(Serial.available()) {
     String message = Serial.readString();
     checkMessage(message);
   }
 }
 
-
 /**
- * Jump the message.
+ * Jumble the message.
  */
 String jumble(String message) {
   char jumbled[message.length()];
@@ -247,17 +252,27 @@ String jumble(String message) {
   return jumbled;
 }
 
+/* -------------------------- McGriffs eyes ------------------------- */
 
-/* McGriffs eyes */
+/**
+ * Setup McGriff's eyes to watch for a wave.
+ */
 void setup_eyes() {
+  // trigPin and echoPin are used by the ultrasonic sensor to determine distance
+  // to an object.
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 }
 
+/**
+ * McGriff looks for an object in front of his eyes.
+ * 
+ */
 void look_for_object() {
   long distance = get_distance();
-  
-  if (distance < 20) {  // This is where the LED On/Off happens
+
+  // Check if an object is closer then 20 cm.
+  if (distance < 20) {
     Serial.println("Thanks for putting me back together again!");
     bark();
     Serial.println("I’m beginning to feel better.");
@@ -270,7 +285,8 @@ void look_for_object() {
 }
 
 /**
- * Get a distance measurement from the ultrasonic
+ * Get a distance measurement from the ultrasonic sensor and convert it to cm.
+ * 
  */
 long get_distance() {
   long duration, distance;
@@ -289,16 +305,24 @@ long get_distance() {
 }
 
 
-/* McGriff Joystick */
+/* ------------------------- McGriff PAW ---------------------------*/
+/**
+ * Setup McGriff's Paw.
+ * 
+ */
 void setup_joystick() {
     pinMode(JOYSTICK_Y, INPUT);
 }
 
 
-// Were McGriffs paw currently is
+// Where McGriffs paw currently is
 int paw_state = 0;
-// Up is 1, down is 2
-int password[] = {1, 2, 1, 2};
+
+// The password: Up is 1, down is 2
+#define UP                1
+#define DOWN              2
+#define PASSWORD_LENGTH   4
+int password[] = {UP, DOWN, UP, DOWN};
 int lastState = 0;
 
 /**
@@ -314,11 +338,11 @@ void get_paw_location() {
    */
 
     /* Student code goes here */
-    if (password[paw_state] == 1) {
+    if (password[paw_state] == UP) {
       Serial.println("Shake my paw UP!");
     } 
     
-    else if (password[paw_state] == 2) {
+    else if (password[paw_state] == DOWN) {
       Serial.println("Shake my paw DOWN!");
     }
     /* End students code */
@@ -329,6 +353,7 @@ void get_paw_location() {
   // Convert the value to either up or down
   int location = joystick_at_location(joystick_y);
 
+  // Check if the password is correct
   if (location == password[paw_state]) {
     bark();
     paw_state += 1;
@@ -336,7 +361,8 @@ void get_paw_location() {
     paw_state = 0;
   }
 
-  if (paw_state >= 4) {
+  // Check if the password is correct
+  if (paw_state >= PASSWORD_LENGTH) {
     bark();
     multiple_tail_wag(4);
     Serial.println("Woof! Woof!");
@@ -351,35 +377,42 @@ void get_paw_location() {
   }
 }
 
+/**
+ * Convert the digital joystick value to either UP or DOWN. 
+ * 
+ */
 int joystick_at_location(int joystick_y) {
-   if (joystick_y > 800) {
-    return 1;
-   }
+  /* Can you help fix McGriff's paw? He's lost feeling and doesn't know
+   *  if his paw is up or down.
+   *  Hint: use the function Serial.println(joystick_y) to see the current value.
+   */
 
-   if (joystick_y < 200) {
-    return 2;
-   }
+  /* 
+    Students change the values here from 10000 to approx 800 and 0 to approx 200
+  */
+  // Check if McGriff's paw is up
+  if (joystick_y > 10000) {
+  return UP;
+  }
 
-   return 0;
+  // Check if McGriff's paw is down
+  if (joystick_y < 0) {
+  return DOWN;
+  }
+  
+  return 0;
 }
 
+/* Use to control the seven segment display */
 int pinmap[] = {12, 8, 5, 3, 2, 11, 6};
 int select[] = {13, 10, 9, 7};
-
-enum selector { 
-  SS1 = 12,
-  SS2 = 9,
-  SS3 = 8,
-  SS4 = 6
-};
 
 #define SEGMENT_ON    LOW
 #define SEGMENT_OFF   HIGH
 #define SEGMENTS      7
 #define SELECTORS     4
-char multi[SELECTORS][SEGMENTS + 1] = {NONE, NONE, NONE, NONE};
 
-/* TODO: Scamble some of these*/
+/* Mappings of the letters on the seven seg */
 #define P "1100111"
 #define SIX "1011111"
 #define EIGHT "1111111"
@@ -424,6 +457,13 @@ char multi[SELECTORS][SEGMENTS + 1] = {NONE, NONE, NONE, NONE};
 #define SEVEN "1110000"
 End of student work */
 
+// This is used to store the current seven segment values
+char multi[SELECTORS][SEGMENTS + 1] = {NONE, NONE, NONE, NONE};
+
+/**
+ * Setup the seven segment display.
+ * 
+ */
 void setup_sev_seg() {
   // Setup the seven segment display
   // There are two mistakes in the following for loops! 
@@ -456,8 +496,67 @@ void setup_sev_seg() {
   initScreen();
 }
 
+
+
+
+
+
+
+/* ------------- Don't touch below here ----------------- */
+
+
+
+
+
+/* Use to synchronise McGriff's different body parts */
+uint32_t delay_until = 0;
+long sees_object = 0;
+long feels_object = 0;
+
+/**
+ * Delay for the specified about of time. 
+ * 
+ */
+void delay_for(int waitTime) {
+  delay_until = max(millis() + waitTime, delay_until);
+}
+
 /** 
- * Turn off all segments 
+ *  Busy waiting function that still allows for most of McGriff's body to function.
+ *  
+ */
+void delay_in_loop() {
+  while (millis() < delay_until) {
+    // Check for a wag
+    // McGriff wags his tail
+    if (is_wagging > 0) {
+      wag_tail();
+      is_wagging--;
+    }
+
+    // McGriff Looks for objects
+    if (millis() > sees_object + 500) {
+      look_for_object();
+      sees_object = millis();
+    }
+
+    // Check his paw
+    if (millis() > feels_object + 200) {
+      get_paw_location();
+      feels_object = millis();
+    }
+    
+    // McGriff listens for a message
+    communicate_via_serial();
+
+    // Display on the 7 segment display
+    displayMulti();
+  }
+}
+
+/** 
+ * Turn off all segments.
+ * 
  */
 void initScreen() {
   for (int i = 0; i < SEGMENTS; i++) {
@@ -465,14 +564,23 @@ void initScreen() {
   }
 }
 
-
+// Store the next segment to light up
 int nextSeg = 0;
+
+/**
+ * Display the next segment of the seven segment display.
+ * 
+ */
 void displayMulti() {
   display(multi[nextSeg], nextSeg);
   nextSeg += 1;
   nextSeg = nextSeg % 4;
 }
 
+/**
+ * Display a letter on the next segment of the seven segment display.
+ * 
+ */
 void display(const char segs[], int pos) {
   int num = 0;
 
@@ -494,19 +602,27 @@ void display(const char segs[], int pos) {
   }
 }
 
+/**
+ * Set all select pins to low.
+ * 
+ */
 void selectorsLow() {
   for (int i = 0; i < SELECTORS; i++) {
     digitalWrite(select[i], LOW);
   }
 }
 
+/**
+ * Set all select pins to high.
+ * 
+ */
 void segmentsHigh() {
   for (int i = 0; i < SEGMENTS; i++) {
     digitalWrite(pinmap[i], SEGMENT_OFF);
   }
 }
 
-  /**
+/**
  * Check if a message is correct.
  */
 void checkMessage(String message) {
@@ -540,43 +656,4 @@ void checkMessage(String message) {
 
   bark();
 }
-
-
-/* Don't touch below here */
-void delay_for(int waitTime) {
-  delay_until = max(millis() + waitTime, delay_until);
-}
-
-/** 
- *  Busy waiting function
- */
-void delay_in_loop() {
-  while (millis() < delay_until) {
-    // Check for a wag
-    // McGriff wags his tail
-    if (is_wagging > 0) {
-      wag_tail();
-      is_wagging--;
-    }
-
-    // McGriff Looks for objects
-    if (millis() > sees_object + 500) {
-      look_for_object();
-      sees_object = millis();
-    }
-
-    // Check his paw
-    if (millis() > feels_object + 200) {
-      get_paw_location();
-      feels_object = millis();
-    }
-    
-    // McGriff listens for a message
-    communicate_via_serial();
-
-    // Display on the 7 segment display
-    displayMulti();
-  }
-}
-
 
